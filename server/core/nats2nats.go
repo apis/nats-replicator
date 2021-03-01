@@ -69,14 +69,14 @@ func (conn *NATS2NATSConnector) Start() error {
 		start := time.Now()
 		l := int64(len(msg.Data))
 
-		err := onc.Publish(config.OutgoingSubject, msg.Data)
+		err := onc.PublishRequest(msg.Subject, msg.Reply, msg.Data)
 
 		if err != nil {
 			conn.stats.AddMessageIn(l)
 			conn.bridge.Logger().Noticef("connector publish failure, %s, %s", conn.String(), err.Error())
 		} else {
 			if traceEnabled {
-				conn.bridge.Logger().Tracef("%s wrote message to nats", conn.String())
+				conn.bridge.Logger().Tracef(">>> [%s] s [%s], r [%s], size [%v]", conn.ID(), msg.Subject, msg.Reply, len(msg.Data))
 			}
 			conn.stats.AddRequest(l, l, time.Since(start))
 		}
@@ -92,6 +92,7 @@ func (conn *NATS2NATSConnector) Start() error {
 
 	if config.IncomingQueueName == "" {
 		conn.subscription, err = nc.Subscribe(config.IncomingSubject, callback)
+		conn.bridge.Logger().Tracef("subscribe [%s], s [%s]", nc.Opts.Servers, config.IncomingSubject)
 	} else {
 		conn.subscription, err = nc.QueueSubscribe(config.IncomingSubject, config.IncomingQueueName, callback)
 	}
